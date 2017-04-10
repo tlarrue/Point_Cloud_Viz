@@ -11,7 +11,7 @@ using namespace std;
 
 class bcdEncoder {
 public:
-	static string writeBinaryFile(string textFile, int numElements);
+	static string writeBinaryFile(string textFile);
 	static void readBinaryFile(string binaryFile, int numElements, vector<GLfloat> &vec);
 };
 

@@ -15,14 +15,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-//#include <cstdio>
-//#include <ctime>
-
-//#include <boost/spirit/home/x3.hpp>
-//#include <boost/iostreams/device/mapped_file.hpp> 
 #include "DebugTimer.h"
 #include "bcdEncoder.h"
-//#define MYPI 3.14159265357f
+
 
 // Function prototypes
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
@@ -31,12 +26,9 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void do_movement();
 void reset();
 GLuint loadShaderFromFile(const char* path, GLenum shaderType);
-void readData(const char* fileName, std::vector<GLfloat> &vec);
-int countLines(const char* fileName);
-//void readData_mmap_spirit(const char* fileName, std::vector<GLfloat> &vec);
 
 // Window dimensions
-const GLuint WIDTH = 800, HEIGHT = 600;
+const GLuint WIDTH = 1600, HEIGHT = 1200;
 
 // Starting positions
 glm::vec3 cameraPosStart = glm::vec3(-45.0f, 15.0f, 5.0f);
@@ -67,20 +59,18 @@ GLfloat lastFrame = 0.0f;  	// Time of last frame
 const char* vertFile = "..\\PointCloud.vert";
 const char* fragFile = "..\\PointCloud.frag";
 
-// INPUTS
-
-//const char* inFile = "..\\backlot_every1000.xyz";
+// Input Data
+//const char* inFile = "..\\data\\backlot_every1000.xyz";
 //const int numVertices = 148300;
 
-//const char* inFile = "..\\backlot_every100.xyz";
-//const int numVertices = 1483002;
+const char* inFile = "..\\data\\backlot_every100.xyz";
+const int numVertices = 1483002;
 
-//const char* inFile = "..\\backlot_every10.xyz";
-//const int numVertices = 14830000;
+//const char* inFile = "..\\data\\backlot_every10.xyz";
 //const int numVertices = 14830024;
 
-const char* inFile = "..\\data\\riseBacklot_pointcloud.xyz";
-const int numVertices = 148300241;
+//const char* inFile = "..\\data\\riseBacklot_pointcloud.xyz";
+//const int numVertices = 148300241;
 
 // Main Function
 int main()
@@ -98,7 +88,7 @@ int main()
     //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // for mac
     
     // Create a window object called 'LearnOpenGL'
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Point Cloud Visualization", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Point Cloud Visualization", nullptr, nullptr);
     if (window == nullptr)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -134,11 +124,6 @@ int main()
     // Create vertex shader object
     GLuint vertexShader;
     vertexShader = loadShaderFromFile(vertFile, GL_VERTEX_SHADER);
-    //vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    
-    // Attach shader source code to shader object + compile shader
-    //glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    //glCompileShader(vertexShader);
     
     // Create fragment shader object
     GLuint fragmentShader;
@@ -165,152 +150,22 @@ int main()
     // Delete shader objects once they've been linked to program object
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
-    
-    // Define test point cloud data - 41 points
-	/*
-    GLfloat vertices[] = {
-        1.68420000, 0.12080000, 9.66800000, 254, 254, 254,
-        1.67520000, 0.05110000, 9.64720000, 251, 251, 251,
-        1.65530000, -0.11230000, 9.67500000, 254, 254, 254,
-        1.65810000, -0.11240000, 9.65540000, 254, 253, 254,
-        1.65830000, -0.11340000, 9.65750000, 254, 253, 254,
-        1.65690000, -0.11430000, 9.65090000, 254, 253, 254,
-        1.65580000, -0.13080000, 9.66450000, 254, 254, 253,
-        1.66460000, -0.11480000, 9.65970000, 238, 234, 254,
-        1.65250000, -0.17290000, 9.66500000, 250, 251, 243,
-        1.65090000, -0.17670000, 9.66140000, 254, 252, 254,
-        1.65030000, -0.18370000, 9.66770000, 254, 254, 254,
-        1.71850000, 0.16760000, 9.71490000, 65, 53, 117,
-        1.71870000, 0.16660000, 9.71610000, 65, 54, 117,
-        1.71880000, 0.16560000, 9.71670000, 65, 54, 117,
-        1.71850000, 0.16460000, 9.71540000, 81, 68, 135,
-        1.71850000, 0.16360000, 9.71510000, 81, 68, 135,
-        1.71900000, 0.16270000, 9.71810000, 81, 68, 135,
-        1.72020000, 0.15180000, 9.72720000, 78, 70, 117,
-        1.72020000, 0.15080000, 9.72720000, 63, 50, 118,
-        1.71980000, 0.14980000, 9.72540000, 62, 50, 117,
-        1.71990000, 0.14880000, 9.72590000, 63, 50, 117,
-        1.71990000, 0.14770000, 9.72630000, 71, 59, 124,
-        1.72000000, 0.14580000, 9.72710000, 71, 59, 124,
-        1.71990000, 0.14480000, 9.72710000, 70, 58, 124,
-        1.71970000, 0.14380000, 9.72580000, 73, 61, 125,
-        1.72000000, 0.13980000, 9.72880000, 63, 51, 112,
-        1.72010000, 0.13870000, 9.72940000, 63, 51, 112,
-        1.71130000, 0.14530000, 9.71150000, 122, 116, 153,
-        1.71140000, 0.14430000, 9.71260000, 122, 116, 153,
-        1.71150000, 0.14330000, 9.71340000, 122, 116, 153,
-        1.71130000, 0.14230000, 9.71230000, 122, 116, 153,
-        1.71210000, 0.14140000, 9.71680000, 122, 116, 153,
-        1.71220000, 0.14040000, 9.71760000, 102, 92, 149,
-        1.71230000, 0.13740000, 9.71910000, 102, 92, 149,
-        1.71200000, 0.13640000, 9.71790000, 102, 92, 149,
-        1.71180000, 0.13530000, 9.71700000, 102, 92, 149,
-        1.71200000, 0.13420000, 9.71820000, 134, 125, 176,
-        1.71250000, 0.13130000, 9.72200000, 135, 125, 176,
-        1.71280000, 0.13030000, 9.72400000, 135, 125, 176,
-        1.71270000, 0.12830000, 9.72410000, 82, 72, 120,
-        1.71250000, 0.12730000, 9.72280000, 82, 72, 120
-    };
-    */
-    //Count lines in input file
-	//int numLines = countLines(inFile);
-	//std:cout << "Lines: " << numLines << std::endl;
-
-
-	/*
-	GLfloat* vertices = NULL;
-	
-	vertices = new GLfloat[numVertices*6];
-	
-	std::ifstream source(inFile);
-	GLfloat val;
-	int counter = 0;
-	if (source) {
-		while (source >> val) {
-			vertices[counter] = val;
-		}
-	}
-	*/
-	// Read input data
-	//std::vector<GLfloat> vertices;
-	//vertices.reserve(numLines * 6);
-	//vertices = readData(inFile);
-
-	// Read data as array
-	/*
-	GLfloat* vertices = NULL;
-	//int numVertices = countLines(inFile);
-	vertices = new GLfloat[numVertices*6];
-	std::ifstream source(inFile);
-	for (int i = 0; i < numVertices * 6; i++) {
-		source >> vertices[i];
-	}
-	std::cout << vertices[0] << vertices[1] << vertices[2] << std::endl;
-	DebugTimer::End("aaa");
-	duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
-	std::cout << "Read Time: " << duration << std::endl;
-	*/
-
+   
 	// Read data as vector
-	
-	bool splitArray = false;
 	std::vector<GLfloat> vertices (1);
 	try {
-		//std::vector<GLfloat> vertices(numVertices * 6);
+		float datasize = (numVertices * 6 * sizeof(GLfloat)) / 1000000000.f;
+		std::cout << "Input data size: " << datasize << " gb" <<std::endl;
 		vertices.resize(numVertices * 6);
 		std::string s(inFile);
-		std::string bFile = bcdEncoder::writeBinaryFile(s, numVertices*6);
+		std::string bFile = bcdEncoder::writeBinaryFile(s);
 		bcdEncoder::readBinaryFile(bFile, numVertices * 6, vertices); // read from binary rep
 	}
 	catch (const std::bad_alloc& e) {
-		std::cout << "Allocation failed" << std::endl;
-		splitArray = true;
-	}
-	
-	// split up read operation for big data
-	std::vector<int> splits;
-	if (splitArray) {
-		int splitElements = (numVertices * 6) / 10;
-		int lastSplit = splitElements + ((numVertices * 6) % 10);
-
-		for (int i = 0; i = 9; i++) {
-			if (i == 9)
-				splits.push_back(lastSplit);
-			else
-				splits.push_back(splitElements);
-		}
-
-
+		std::cout << "Mem Allocation failed. Exiting." << std::endl;
+		return -1;
 	}
 	//DebugTimer::End("READ");
-	//std::vector<GLfloat> vertices;
-	//vertices.reserve(numVertices);
-
-	
-
-	//Debug data load
-	/*
-	std::cout << vertices[0] << std::endl;
-	std::cout << vertices[1] << std::endl;
-	std::cout << vertices[2] << std::endl;
-	std::cout << vertices[3] << std::endl;
-	std::cout << vertices[4] << std::endl;
-	std::cout << vertices[5] << std::endl;
-	std::cout << vertices[148300 - 6] << std::endl;
-	std::cout << vertices[148300 - 5] << std::endl;
-	std::cout << vertices[148300 - 4] << std::endl;
-	std::cout << vertices[148300 - 3] << std::endl;
-	std::cout << vertices[148300 - 2] << std::endl;
-	std::cout << vertices[148300 - 1] << std::endl;
-	std::cout << vertices.size() << std::endl;
-	*/
-
-	//readData(inFile, vertices); //faster than mmap
-	
-	//readData_mmap_spirit(inFile, vertices); // read data w/ memory mapped file & spirit parser
-	//duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
-	//DebugTimer::End("aaa");
-	//std::cout << "Read Time: " << duration << std::endl;
 	
 	// Generate a vertex buffer object - manages memory on GPU
     GLuint VBO, VAO;
@@ -320,28 +175,14 @@ int main()
     // Bind Vertex array object first, then bind and set vertex buffer(s) and attribute pointer(s).
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	if (!splitArray) {
-		glBufferData(GL_ARRAY_BUFFER, numVertices * 6 * sizeof(GLfloat), &vertices[0], GL_STATIC_DRAW); 
-	}
-	else {
-		for (int i = 0; i = 9; i++) {
-			vertices.resize(splits[i]);
-			std::string s(inFile);
-			std::string bFile = bcdEncoder::writeBinaryFile(s, splits[i]);
-			bcdEncoder::readBinaryFile(bFile, splits[i], vertices); // read from binary rep
+	glBufferData(GL_ARRAY_BUFFER, numVertices * 6 * sizeof(GLfloat), &vertices[0], GL_STATIC_DRAW); 
 
-			glBufferSubData(GL_ARRAY_BUFFER, i * splits[i] * sizeof(GLfloat), splits[i] * sizeof(GLfloat), &vertices[0]);
-		}
-		
-		
-	}
-	
 	//glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat), &vertices[0], GL_STATIC_DRAW); //vector
-    //glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);    
-	//glBufferData(GL_ARRAY_BUFFER, numVertices * 6 * sizeof(GLfloat), vertices, GL_STATIC_DRAW); // heap array
-	//delete [] vertices;
-	//vertices = NULL;
-	std::vector<GLfloat>().swap(vertices); // deallocate mem
+    //glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);   //const array 
+	//glBufferData(GL_ARRAY_BUFFER, numVertices * 6 * sizeof(GLfloat), vertices, GL_STATIC_DRAW); //heap array
+	//delete [] vertices; // heap array
+	//vertices = NULL; // heap array
+	std::vector<GLfloat>().swap(vertices); // deallocate mem - vector
 
     // Tell OpenGL how to interpret vertex data
     // Position attribute
@@ -358,8 +199,10 @@ int main()
     // Game loop (so window doesn't close)
     while (!glfwWindowShouldClose(window))
     {
-		glfwSwapInterval(0); //for timer
+		// Measure render time
+		glfwSwapInterval(0); //vertical sync
 		DebugTimer::Begin("LOOP");
+
         // Calculate deltatime of current frame
         GLfloat currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
@@ -371,8 +214,8 @@ int main()
         
         // Render
         // Clear the colorbuffer
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        //glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f); //black
+        //glClearColor(0.2f, 0.3f, 0.3f, 1.0f); //bluish-grey
         glClear(GL_COLOR_BUFFER_BIT);
         
         // Every shader and rendering call after this will use this shader program obj
@@ -383,7 +226,6 @@ int main()
         
         // camera
         glm::mat4 viewMatrix = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-        //glm::mat4 projMatrix = glm::perspective(fov / 180.f * MYPI, (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
 		glm::mat4 projMatrix = glm::perspective(glm::radians(fov), (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
         glm::mat4 modelMatrix = glm::mat4();
         
@@ -409,7 +251,7 @@ int main()
 		DebugTimer::End("LOOP");
     }
     
-    // Properly de-allocate all resources once they've outlived their purpose
+    // De-allocate resources
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     
@@ -465,6 +307,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 }
 
+/*
+Look around in direction of mouse when mouse button is clicked.
+*/
 bool firstMouse = true;
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
@@ -483,14 +328,14 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 		lastX = xpos;
 		lastY = ypos;
 
-		GLfloat sensitivity = 1.0;	// Change this value to your liking
+		GLfloat sensitivity = 1.0;	// adjust
 		xoffset *= sensitivity;
 		yoffset *= sensitivity;
 
 		pitch += yoffset;
 		yaw -= xoffset;
 
-		// Make sure that when pitch is out of bounds, screen doesn't get flipped
+		// Make sure when pitch is out of bounds, screen doesn't get flipped
 		if (pitch > 89.0f)
 			pitch = 89.0f;
 		if (pitch < -89.0f)
@@ -502,14 +347,6 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 		front.y = sin(glm::radians(yaw));
 		cameraFront = glm::normalize(front);
 
-		//Debug
-		/*
-		std::cout << "yoffset: " << yoffset << "; xoffset: " << xoffset << std::endl;
-		std::cout << "pitch: " << pitch << "; yaw: " << yaw << std::endl;
-		std::cout << "front-x: " << front.x << std::endl;
-		std::cout << "front-y: " << front.y << std::endl;
-		std::cout << "front-z: " << front.z << std::endl;
-		*/
 	}
 	else {
 		firstMouse = true;
@@ -570,54 +407,3 @@ GLuint loadShaderFromFile(const char* path, GLenum shaderType)
     
     return shaderID;
 }
-
-/*
-Reads space delimited file into 1-D vector.
-*/
-void readData(const char* fileName, std::vector<GLfloat> &vec)
-{
-	GLfloat val;
-	std::ifstream source(fileName);
-
-	if (source) {
-		while (source >> val) {
-			vec.push_back(val);
-		}
-	}
-	else {
-		std::cout << "Unable to open file " << fileName << std::endl;
-	}
-    
-}
-
-int countLines(const char* fileName)
-{
-	int numLines = 0;
-	std::string line;
-	std::ifstream source(fileName);
-
-	while (std::getline(source, line))
-		++numLines;
-
-	return numLines;
-}
-/*
-void readData_mmap_spirit(const char* fileName, std::vector<GLfloat> &vec)
-{
-	// memory map the input file
-	boost::iostreams::mapped_file mmap(fileName, boost::iostreams::mapped_file::readonly);
-	auto f = mmap.const_data();
-	auto l = f + mmap.size();
-
-	// parse with spirit x3
-	namespace x3 = boost::spirit::x3;
-	using namespace x3;
-	bool ok = x3::phrase_parse(f, l, *x3::double_, x3::space, vec);
-
-	// check success
-	if (ok)
-		std::cout << "parse success\n";
-	else
-		std::cerr << "parse failed: '" << std::string(f, l) << "'\n";
-}
-*/
