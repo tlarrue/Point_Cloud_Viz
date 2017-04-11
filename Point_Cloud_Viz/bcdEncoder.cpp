@@ -31,6 +31,7 @@ string bcdEncoder::writeBinaryFile(string textFile)
 		cout << "Binary file already exists: " << binFile << endl;
 		return binFile;
 	}
+	
 }
 
 /*
@@ -50,6 +51,6 @@ void bcdEncoder::readBinaryFile(string binaryFile, int numElements, vector<GLflo
 Determines if a file exists.
 */
 inline bool exists(string& name) {
-	struct stat buffer;
-	return (stat(name.c_str(), &buffer) == 0);
+	ifstream f(name.c_str());
+	return f.good();
 }

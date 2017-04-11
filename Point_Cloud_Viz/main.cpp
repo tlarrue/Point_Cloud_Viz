@@ -15,6 +15,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <algorithm>
+#include <functional>
+
 #include "DebugTimer.h"
 #include "bcdEncoder.h"
 
@@ -63,11 +66,11 @@ const char* fragFile = "..\\PointCloud.frag";
 //const char* inFile = "..\\data\\backlot_every1000.xyz";
 //const int numVertices = 148300;
 
-const char* inFile = "..\\data\\backlot_every100.xyz";
-const int numVertices = 1483002;
+//const char* inFile = "..\\data\\backlot_every100.xyz";
+//const int numVertices = 1483002;
 
-//const char* inFile = "..\\data\\backlot_every10.xyz";
-//const int numVertices = 14830024;
+const char* inFile = "..\\data\\backlot_every10.xyz";
+const int numVertices = 14830024;
 
 //const char* inFile = "..\\data\\riseBacklot_pointcloud.xyz";
 //const int numVertices = 148300241;
@@ -165,6 +168,7 @@ int main()
 		std::cout << "Mem Allocation failed. Exiting." << std::endl;
 		return -1;
 	}
+	//std::transform(vertices.begin(), vertices.end(), vertices.begin(), std::bind1st(std::multiplies<GLfloat>(), 0.5));
 	//DebugTimer::End("READ");
 	
 	// Generate a vertex buffer object - manages memory on GPU
@@ -175,6 +179,7 @@ int main()
     // Bind Vertex array object first, then bind and set vertex buffer(s) and attribute pointer(s).
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	
 	glBufferData(GL_ARRAY_BUFFER, numVertices * 6 * sizeof(GLfloat), &vertices[0], GL_STATIC_DRAW); 
 
 	//glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat), &vertices[0], GL_STATIC_DRAW); //vector
@@ -225,15 +230,20 @@ int main()
         glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
         
         // camera
+		glm::mat4 trans;
+		//trans = glm::scale(trans, glm::vec3(0.5, 0.5, 0.5));
+		trans = glm::translate(trans, glm::vec3(0.0f, 0.0f, -1.75f));
         glm::mat4 viewMatrix = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 		glm::mat4 projMatrix = glm::perspective(glm::radians(fov), (GLfloat)WIDTH / (GLfloat)HEIGHT, 0.1f, 100.0f);
         glm::mat4 modelMatrix = glm::mat4();
         
         // Get uniform locations
+		GLuint transformLoc = glGetUniformLocation(shaderProgram, "transform");
         GLint modelLoc = glGetUniformLocation(shaderProgram, "ModelMatrix");
         GLint viewLoc = glGetUniformLocation(shaderProgram, "ViewMatrix");
         GLint projLoc = glGetUniformLocation(shaderProgram, "ProjectionMatrix");
 
+		glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projMatrix));
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(viewMatrix));
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
