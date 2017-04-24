@@ -6,7 +6,7 @@
 #include <iostream>
 using namespace std;
 #define DEBUG_TIMER_ON
-#define TOTAL_TIMERS 500
+#define TOTAL_TIMERS 100
 
 
 struct SingleTimePoint {
