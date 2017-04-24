@@ -9,9 +9,16 @@
 
 using namespace std; 
 
+struct pcBinFiles {
+	string posFileName;
+	string colFileName;
+	int posFileSize;
+	int colFileSize;
+};
+
 class bcdEncoder {
 public:
-	static string writeBinaryFile(string textFile);
+	static pcBinFiles writeBinaryFiles(string textFile, bool overwrite);
 	static void readBinaryFile(string binaryFile, int numElements, vector<GLfloat> &vec);
 };
 

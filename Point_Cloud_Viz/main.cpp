@@ -19,7 +19,7 @@
 #include <functional>
 
 #include "DebugTimer.h"
-#include "bcdEncoder.h"
+#include "pcReader.h"
 
 
 // Function prototypes
@@ -29,6 +29,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void do_movement();
 void reset();
 GLuint loadShaderFromFile(const char* path, GLenum shaderType);
+void handleGLerrors(GLenum error);
 
 // Window dimensions
 const GLuint WIDTH = 1600, HEIGHT = 1200;
@@ -63,15 +64,17 @@ const char* vertFile = "..\\PointCloud.vert";
 const char* fragFile = "..\\PointCloud.frag";
 
 // Input Data
+//std::string inFile = "..\\data\\backlot_every1000.xyz";
 //const char* inFile = "..\\data\\backlot_every1000.xyz";
 //const int numVertices = 148300;
 
 //const char* inFile = "..\\data\\backlot_every100.xyz";
 //const int numVertices = 1483002;
 
-const char* inFile = "..\\data\\backlot_every10.xyz";
-const int numVertices = 14830024;
+//const char* inFile = "..\\data\\backlot_every10.xyz";
+//const int numVertices = 14830024;
 
+std::string inFile = "..\\data\\riseBacklot_pointcloud.xyz";
 //const char* inFile = "..\\data\\riseBacklot_pointcloud.xyz";
 //const int numVertices = 148300241;
 
@@ -155,14 +158,46 @@ int main()
     glDeleteShader(fragmentShader);
    
 	// Read data as vector
-	std::vector<GLfloat> vertices (1);
+	pcReader::pcInfo dataInfo;
 	try {
-		float datasize = (numVertices * 6 * sizeof(GLfloat)) / 1000000000.f;
-		std::cout << "Input data size: " << datasize << " gb" <<std::endl;
-		vertices.resize(numVertices * 6);
-		std::string s(inFile);
-		std::string bFile = bcdEncoder::writeBinaryFile(s);
-		bcdEncoder::readBinaryFile(bFile, numVertices * 6, vertices); // read from binary rep
+		dataInfo = pcReader::parseText(inFile, false);
+	} 
+	catch (const std::exception& e) {
+		std::cout << e.what() << std::endl;
+		cin.ignore();
+		return -1;
+	}
+	
+	std::vector<GLfloat> posFloatVec(1);
+	std::vector<GLhalf> posHalfVec(1);
+	int posPoints = dataInfo.points * dataInfo.attrSizes["positions"];
+	int posSize;
+	int colPoints = dataInfo.points * dataInfo.attrSizes["colors"];
+	int colSize = colPoints;
+	std::vector<GLubyte> colByteVec(colPoints,0);
+	try {
+
+		dataInfo.dataTypes["positions"] = 4; //TODO: WRITE DATATYPE SOMEWHERE - hdr of data file
+		if (dataInfo.dataTypes["positions"] == 2) {
+			posHalfVec.resize(posPoints);
+			pcReader::readPositions(&dataInfo, posHalfVec);
+			posSize = posPoints * sizeof(GLhalf);
+		}
+		else if (dataInfo.dataTypes["positions"] == 4) {
+			posFloatVec.resize(posPoints);
+			pcReader::readPositions(&dataInfo, posFloatVec);
+			posSize = posPoints * sizeof(GLfloat);
+		}
+		else {
+			std::runtime_error("Position data type not recognized.\n");
+		}
+
+		pcReader::readColors(&dataInfo, colByteVec);
+	}
+	catch (const std::exception& e) {
+		std::cout << e.what() << std::endl;
+		cin.ignore();
+		return -1;
 	}
 	catch (const std::bad_alloc& e) {
 		std::cout << "Mem Allocation failed. Exiting." << std::endl;
@@ -177,33 +212,61 @@ int main()
     glGenBuffers(1, &VBO);
     
     // Bind Vertex array object first, then bind and set vertex buffer(s) and attribute pointer(s).
+	GLuint totalSize = posSize + colSize;
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	
-	glBufferData(GL_ARRAY_BUFFER, numVertices * 6 * sizeof(GLfloat), &vertices[0], GL_STATIC_DRAW); 
+	glBufferData(GL_ARRAY_BUFFER, totalSize, NULL, GL_STATIC_DRAW);
+	handleGLerrors(glGetError());
 
-	//glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat), &vertices[0], GL_STATIC_DRAW); //vector
-    //glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);   //const array 
-	//glBufferData(GL_ARRAY_BUFFER, numVertices * 6 * sizeof(GLfloat), vertices, GL_STATIC_DRAW); //heap array
-	//delete [] vertices; // heap array
-	//vertices = NULL; // heap array
-	std::vector<GLfloat>().swap(vertices); // deallocate mem - vector
+	int colOffset;
+	if (dataInfo.dataTypes["positions"] == 2) {
+		glBufferSubData(GL_ARRAY_BUFFER, 0, posPoints * sizeof(GLhalf), &posHalfVec[0]);
+		colOffset = posPoints * sizeof(GLhalf);
+	}
+	else if (dataInfo.dataTypes["positions"] == 4) {
+		glBufferSubData(GL_ARRAY_BUFFER, 0, posPoints * sizeof(GLfloat), &posFloatVec[0]);
+		colOffset = posPoints * sizeof(GLfloat);
+	}
+
+	glBufferSubData(GL_ARRAY_BUFFER, colOffset, colPoints * sizeof(GLubyte), &colByteVec[0]);
+	handleGLerrors(glGetError());
+
+	//deallocate memory
+	std::vector<GLfloat>().swap(posFloatVec); 
+	std::vector<GLhalf>().swap(posHalfVec); 
+	std::vector<GLubyte>().swap(colByteVec); 
 
     // Tell OpenGL how to interpret vertex data
     // Position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
-    glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(0);
+	if (dataInfo.dataTypes["positions"] == 2) {
+		glVertexAttribPointer(0, 3, GL_HALF_FLOAT, GL_FALSE, dataInfo.attrSizes["positions"] * sizeof(GLhalf), 0);
+	}
+	else if (dataInfo.dataTypes["positions"] == 4) {
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, dataInfo.attrSizes["positions"] * sizeof(GLfloat), 0);
+	}
+	
     // Color attribute
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 3, GL_UNSIGNED_BYTE, GL_FALSE, dataInfo.attrSizes["colors"] * sizeof(GLubyte), (GLvoid*)colOffset);
+	handleGLerrors(glGetError());
 
     // Unbind the VAO
-    //glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
-    
+
+	//unsigned int queryID[2];
+	//GLuint64 startTime, stopTime;
+
     // Game loop (so window doesn't close)
     while (!glfwWindowShouldClose(window))
     {
+		//generate 2 queries
+		//glGenQueries(2, queryID);
+
+		//issue 1st query
+		//glQueryCounter(queryID[0], GL_TIMESTAMP);
+
 		// Measure render time
 		glfwSwapInterval(0); //vertical sync
 		DebugTimer::Begin("LOOP");
@@ -252,12 +315,28 @@ int main()
         glBindVertexArray(VAO);
     
         //glDrawArrays(GL_POINTS, 0, 3);
-        glDrawArrays(GL_POINTS, 0, numVertices);
+        glDrawArrays(GL_POINTS, 0, dataInfo.points);
 
         glBindVertexArray(0);
-        
+
         glfwSwapBuffers(window);
+		/*
+		glQueryCounter(queryID[1], GL_TIMESTAMP);
+		// wait until the results are available
+		GLint stopTimerAvailable = 0;
+		while (!stopTimerAvailable) {
+			glGetQueryObjectiv(queryID[1],
+				GL_QUERY_RESULT_AVAILABLE,
+				&stopTimerAvailable);
+		}
+		*/
 		
+		// get query results
+		//glGetQueryObjectui64v(queryID[0], GL_QUERY_RESULT, &startTime);
+		//glGetQueryObjectui64v(queryID[1], GL_QUERY_RESULT, &stopTime);
+		//printf("Time spent on the GPU: %f ms\n", (stopTime - startTime) / 1000000.0);
+
+		glFinish();
 		DebugTimer::End("LOOP");
     }
     
@@ -416,4 +495,41 @@ GLuint loadShaderFromFile(const char* path, GLenum shaderType)
     }
     
     return shaderID;
+}
+
+void handleGLerrors(GLenum error) {
+
+	if (error == GL_NO_ERROR) {
+	}
+	else if (error == GL_INVALID_ENUM) {
+		std::cout << "invalid enum" << std::endl;
+	} 
+	else if (error == GL_INVALID_VALUE) {
+		std::cout << "invalid value" << std::endl;
+	}
+	else if (error == GL_INVALID_OPERATION) {
+		std::cout << "invalid operation" << std::endl;
+	}
+	else if (error == GL_STACK_OVERFLOW) {
+		std::cout << "STACK_OVERFLOW" << std::endl;
+	}
+	else if (error == GL_STACK_UNDERFLOW) {
+		std::cout << "STACK_UNDERFLOW" << std::endl;
+	}
+	else if (error == GL_OUT_OF_MEMORY) {
+		std::cout << "out of memory" << std::endl;
+	}
+	else if (error == GL_INVALID_FRAMEBUFFER_OPERATION) {
+		std::cout << "invalid frame buffer operation" << std::endl;
+	}
+	else if (error == GL_CONTEXT_LOST) {
+		std::cout << "context lost" << std::endl;
+	}
+	else if (error == GL_TABLE_TOO_LARGE) {
+		std::cout << "table too large" << std::endl;
+	}
+	else {
+		std::cout << "unhandled GL error" << std::endl;
+	}
+
 }
